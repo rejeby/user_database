@@ -1,33 +1,31 @@
 const express = require("express");
+const { userCheckCreds, userAddToken } = require("../mysql/queries");
 const router = express.Router();
 const { getUniqueID } = require("../utils");
+const sha256 = require("sha256");
 
-router.post("/", (req, res) => {
-  const { body, simpsons } = req;
-  let sessionToken = [];
+router.post("/", async (req, res) => {
+  let { email, password } = req.body;
 
-  if (!body.userName || !body.password) {
-    res.send({ status: 0, error: "username or password missing" });
+  if (!email || !password) {
+    res.send({ status: 0, error: "email or password missing" });
   }
 
   //confirm username & password matches what's on file
-  const indexOfUser = simpsons.findIndex((user) => {
-    return user.userName === body.userName && user.password === body.password;
-  });
+  password = sha256(process.env.SALT + password);
 
-  //if details match, generate a token and send it to the user's local storage
-  //and keep a copy of the token on the server to compare it with (shared secret)
-  if (indexOfUser > -1) {
-    const token = getUniqueID(64);
-    simpsons[indexOfUser].token = token;
+  const results = await req.asyncMySQL(userCheckCreds(email, password));
 
-    sessionToken.push(simpsons[indexOfUser]);
-    console.log(sessionToken);
-
-    res.send({ status: 1, token });
+  if (results.length === 0) {
+    res.send({ status: 0, error: "Incorrect email or password" });
     return;
   }
-  res.send({ status: 0, error: "username and password don't match" });
+
+  const token = getUniqueID(64);
+
+  await req.asyncMySQL(userAddToken(results[0].id, token));
+
+  res.send({ status: 1, token });
 });
 
 module.exports = router;

@@ -1,36 +1,23 @@
 const express = require("express");
 const router = express.Router();
+const { updateUser } = require("../mysql/queries");
+const sha256 = require("sha256");
 
-router.put("/", (req, res) => {
-  const { body, currentUser } = req;
+router.put("/", async (req, res) => {
+  let { name, email, password } = req.body;
+  const { token } = req.headers;
 
-  // const idAsNumber = Number(req.params.id);
-
-  //check a valid ID number was entered
-  // if (!idAsNumber) {
-  //   res.send({ status: 0, error: "item ID not found" });
-  //   return;
-  // }
-
-  //find the user
-  // const indexOfItem = simpsons.findIndex((item) => {
-  //   return item.id === params.id;
-  // });
-
-  if (body.quote && typeof body.quote === "string") {
-    currentUser.quote = body.quote;
+  if (email && typeof email === "string") {
+    await req.asyncMySQL(updateUser(token, "email", email));
   }
 
-  if (body.character && typeof body.character === "string") {
-    currentUser.character = body.character;
+  if (name && typeof name === "string") {
+    await req.asyncMySQL(updateUser(token, "name", name));
   }
 
-  if (body.image && typeof body.image === "string") {
-    currentUser.image = body.image;
-  }
-
-  if (body.characterDirection && typeof body.characterDirection === "string") {
-    currentUser.characterDirection = body.characterDirection;
+  if (password && typeof password === "string") {
+    password = sha256(process.env.SALT + password);
+    await req.asyncMySQL(updateUser(token, "password", password));
   }
 
   res.send({ status: 1 });

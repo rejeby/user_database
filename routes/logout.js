@@ -1,16 +1,15 @@
 const express = require("express");
+const { removeToken } = require("../mysql/queries");
 const router = express.Router();
 
-router.delete("/", (req, res) => {
+router.delete("/", async (req, res) => {
   //kill the token
-  delete req.currentUser.token;
+  await req.asyncMySQL(removeToken(req.headers.token));
 
   res.send({
     status: 1,
-    token: req.currentUser.token,
     message: "user logged out",
   });
-  return;
 });
 
 module.exports = router;

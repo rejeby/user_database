@@ -1,44 +1,57 @@
 require("dotenv").config();
+const asyncMySQL = require("./mysql/connection");
+const checkDBStatus = require("./tests/sql");
 
 //import express from express
 const express = require("express");
 const app = express();
 
 //pull in simpsons api data from local json file
-const { simpsons } = require("./data/simpsons");
+// const { simpsons } = require("./data/simpsons");
 
 // checktoken function to be used in the Update route
 const { checkToken } = require("./middleware/auth");
 const { addToLog } = require("./middleware/logging");
 
-const { random } = require("./utils");
+// const { random } = require("./utils");
 
-//add an ID to the simpsons data because it doesn't have it already
-simpsons.forEach((element) => {
-  element.id = random(100000000);
-  element.characterDirection = element.characterDirection.toLowerCase();
-});
+//check sql database is connected
+
+checkDBStatus(asyncMySQL);
+
+// //add an ID to the simpsons data because it doesn't have it already
+// simpsons.forEach((element) => {
+//   element.id = random(100000000);
+//   element.characterDirection = element.characterDirection.toLowerCase();
+// });
 
 //middleware with built-in functions
 app.use(express.static("public")); //check public folder before checking routes
 app.use(express.json()); //because data is in json format
 
-//logging user actions
-app.use(addToLog);
-
-//attach simpsons info to the request and carry on to next bit
-//a bit like passing props
+//utility middleware
+//attach sql db to the request so the sql data can be passed around easily
 app.use((req, res, next) => {
-  req.simpsons = simpsons;
+  req.asyncMySQL = asyncMySQL;
   next();
 });
 
+//logging user actions
+app.use(addToLog);
+
+// //attach simpsons info to the request and carry on to next bit
+// //a bit like passing props
+// app.use((req, res, next) => {
+//   req.simpsons = simpsons;
+//   next();
+// });
+
 //route middleware - like an internal "virtual" redirect
+app.use("/create", require("./routes/create"));
+app.use("/login", require("./routes/login"));
 app.use("/read", checkToken, require("./routes/read"));
 app.use("/delete", checkToken, require("./routes/delete"));
-app.use("/create", require("./routes/create"));
-app.use("/update", checkToken, require("./routes/update")); //runs with auth middleware
-app.use("/login", require("./routes/login"));
+app.use("/update", checkToken, require("./routes/update"));
 app.use("/logout", checkToken, require("./routes/logout"));
 
 //redirect to another page
